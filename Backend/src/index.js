@@ -1,82 +1,44 @@
-import { Server } from 'socket.io';
-import jwt from 'jsonwebtoken';
-import Conversation from '../models/Conversation.js';
-import Message from '../models/Message.js';
+import 'dotenv/config';
+import express from 'express';
+import http from 'http';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
 
-export function createSocketServer(httpServer, corsOrigin) {
-  const io = new Server(httpServer, {
-    cors: { origin: corsOrigin, credentials: true }
-  });
+import { requireEnv } from './utils/validateEnv.js';
+import { connectDB } from './config/db.js';
+import authRoutes from './routes/auth.routes.js';
+import messageRoutes from './routes/message.routes.js';
+import { createSocketServer } from './socket/index.js';
 
-  // Authenticate every socket
-  io.use((socket, next) => {
-    try {
-      const token =
-        socket.handshake.auth?.token ||
-        socket.handshake.query?.token ||
-        (socket.handshake.headers.authorization?.split(' ')[1]);
+// Validate required envs early (fail fast)
+const PORT = Number(requireEnv('PORT', 4000));
+const MONGODB_URI = requireEnv('MONGODB_URI');
+const CORS_ORIGIN = requireEnv('CORS_ORIGIN', '*');
+requireEnv('JWT_SECRET'); // ensure present
 
-      if (!token) return next(new Error('No token'));
-      const payload = jwt.verify(token, process.env.JWT_SECRET);
-      socket.user = { id: payload.id };
-      next();
-    } catch {
-      next(new Error('Unauthorized'));
-    }
-  });
+await connectDB(MONGODB_URI);
 
-  io.on('connection', (socket) => {
-    const userId = socket.user.id;
-    socket.join(`user:${userId}`);
+const app = express();
+app.set('trust proxy', 1);
 
-    socket.on('conversation:join', async ({ conversationId }) => {
-      socket.join(`convo:${conversationId}`);
-    });
+app.use(cors({ origin: CORS_ORIGIN, credentials: true }));
+app.use(helmet());
+app.use(express.json({ limit: '1mb' }));
+app.use(morgan('dev'));
 
-    socket.on('message:send', async ({ conversationId, text, attachments }) => {
-      try {
-        const convo = await Conversation.findById(conversationId);
-        if (!convo) return socket.emit('error', { message: 'Conversation not found' });
+// Basic rate limit for auth
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
+app.use('/api/auth', authLimiter);
 
-        const isMember = convo.members.some(m => String(m) === String(userId));
-        if (!isMember) return socket.emit('error', { message: 'Not a member' });
+app.get('/health', (_req, res) => res.json({ ok: true }));
+app.use('/api/auth', authRoutes);
+app.use('/api', messageRoutes);
 
-        const msg = await Message.create({
-          conversation: conversationId,
-          sender: userId,
-          text,
-          attachments: attachments || []
-        });
+const server = http.createServer(app);
+createSocketServer(server, CORS_ORIGIN);
 
-        convo.lastMessageAt = new Date();
-        await convo.save();
-
-        io.to(`convo:${conversationId}`).emit('message:new', {
-          _id: msg._id,
-          conversation: conversationId,
-          sender: userId,
-          text,
-          attachments: msg.attachments,
-          createdAt: msg.createdAt
-        });
-      } catch (e) {
-        console.error(e);
-        socket.emit('error', { message: 'Failed to send message' });
-      }
-    });
-
-    socket.on('typing:start', ({ conversationId }) => {
-      socket.to(`convo:${conversationId}`).emit('typing', { userId, isTyping: true });
-    });
-
-    socket.on('typing:stop', ({ conversationId }) => {
-      socket.to(`convo:${conversationId}`).emit('typing', { userId, isTyping: false });
-    });
-
-    socket.on('disconnect', () => {
-      // Presence hooks go here if needed
-    });
-  });
-
-  return io;
-}
+server.listen(PORT, () => {
+  console.log(`🚀 Server listening on http://localhost:${PORT}`);
+});
