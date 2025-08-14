@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import dotenv from "dotenv";
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
@@ -12,8 +12,11 @@ import authRoutes from './routes/auth.routes.js';
 import messageRoutes from './routes/message.routes.js';
 import { createSocketServer } from './socket/index.js';
 
+dotenv.config();
 // Validate required envs early (fail fast)
 const PORT = Number(requireEnv('PORT', 4000));
+console.log("Loaded MONGODB_URI:", process.env.MONGODB_URI);
+
 const MONGODB_URI = requireEnv('MONGODB_URI');
 const CORS_ORIGIN = requireEnv('CORS_ORIGIN', '*');
 requireEnv('JWT_SECRET'); // ensure present

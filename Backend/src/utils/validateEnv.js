@@ -1,7 +1,7 @@
-export function requireEnv(key, fallback) {
-  const value = process.env[key] ?? fallback;
+export const requireEnv = (name, defaultValue) => {
+  const value = process.env[name] ?? defaultValue;
   if (value === undefined) {
-    throw new Error(`Missing required env var: ${key}`);
+    throw new Error(`Expected ${name} in environment`);
   }
   return value;
-}
+};
