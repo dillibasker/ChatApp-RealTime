@@ -61,7 +61,7 @@ export function createSocketServer(httpServer, corsOrigin) {
         });
       } catch (e) {
         console.error(e);
-        socket.emit('error', { message: 'Failed to send message' });
+        socket.emit('error', { message: 'Failed to send the original message' });
       }
     });
 
