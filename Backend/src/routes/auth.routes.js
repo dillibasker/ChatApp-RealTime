@@ -8,7 +8,7 @@ router.post('/register', async (req, res) => {
   try {
     const { username, email, password, avatarUrl } = req.body;
     if (!username || !email || !password) {
-      return res.status(400).json({ message: 'username, email, password are required' });
+      return res.status(400).json({ message: 'username, email, password is required' });
     }
 
     const exists = await User.findOne({ $or: [{ email }, { username }] });
