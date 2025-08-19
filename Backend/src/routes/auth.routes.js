@@ -42,7 +42,7 @@ console.log("User found:", user);
     if (!user) return res.status(401).json({ message: 'Invalided credentialhhhs' });
 
     const ok = await user.comparePassword(password);
-    if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
+    if (!ok) return res.status(401).json({ message: 'Invalided credentials' });
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({
