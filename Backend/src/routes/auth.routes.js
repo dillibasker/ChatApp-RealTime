@@ -39,7 +39,7 @@ const user = await User.findOne({
 
 console.log("User found:", user);
 
-    if (!user) return res.status(401).json({ message: 'Invalid credentialhhhs' });
+    if (!user) return res.status(401).json({ message: 'Invalided credentialhhhs' });
 
     const ok = await user.comparePassword(password);
     if (!ok) return res.status(401).json({ message: 'Invalid credentials' });
