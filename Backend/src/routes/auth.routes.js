@@ -37,7 +37,7 @@ const user = await User.findOne({
   $or: [{ email: emailOrUsername }, { username: emailOrUsername }]
 }).select('+password');
 
-console.log("User found:", user);
+console.log("User is in found:", user);
 
     if (!user) return res.status(401).json({ message: 'Invalided credentialhhhs' });
 
